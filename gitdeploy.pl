@@ -9,6 +9,8 @@ my @dirs = (
 	"$BASE_DIR/wwf-uk.earthhour-wordpress"
 );
 
+if (! -p $pipe_fname) { die "named pipe $pipe_fname doesn't exist"; }
+
 while(1) {
 	open FH, "<", $pipe_fname || die "couldn't open";
 	close FH;
