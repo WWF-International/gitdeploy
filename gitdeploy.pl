@@ -14,6 +14,7 @@ while(1) {
 	close FH;
 	print "Awake\n";
 	for (@dirs) {
+		die "Error: $_ not a directory" unless -d $_;
 		print "Updating: $_\n";
 		system "git --git-dir='$_' pull";
 		print "done\n";
