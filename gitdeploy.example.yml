@@ -1,0 +1,7 @@
+basedir: /git
+logf: /var/log/gitdeploy.log
+pidf: /var/run/gitdeploy.pid
+# what user should we run as?
+user: gitdeployadm
+repos:
+   # this should be an array
