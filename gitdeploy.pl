@@ -4,6 +4,7 @@ use strict;
 use YAML::Tiny;
 use Getopt::Std;
 use IO::Handle;
+use Proc::Daemon;
 
 my $CONFIG_FILE = "/etc/gitdeploy.yml";
 
@@ -16,9 +17,11 @@ if ($opts{f}) {
 
 # initialise to the default config
 my %CONF = (
-	pipef => "/tmp/gitdeploy_test",
-	logf  => "/var/log/gitdeploy.log",
-	repos => [] # empty set of repos by default
+	pipef   => "/tmp/gitdeploy_test",
+	logf    => "/var/log/gitdeploy.log",
+	pidf    => "/var/run/gitdeploy.pid",
+	basedir => "/tmp",
+	repos   => [] # empty set of repos by default
 );
 
 # attempt to read config file
@@ -32,6 +35,22 @@ $fconf = $fconf->[0];
 for (keys %$fconf) {
 	$CONF{$_} = $fconf->{$_};
 }
+
+# fork a daemon and exit
+my $child_pid = Proc::Daemon->new(
+	work_dir     => $CONF{basedir},
+	pid_file     => $CONF{pidf},
+	child_STDOUT => ">>$CONF{logf}",
+	child_STDERR => ">>$CONF{logf}"
+)->Init;
+
+if ($child_pid) {
+	# parent
+	say "Daemon $child_pid started";
+	# parent should exit now
+	exit;
+}
+# this is the child / daemon process
 
 # open the log file
 open LOG, ">>", $CONF{logf} || die "Couldn't open logfile $CONF{logf} for writing";
@@ -49,7 +68,7 @@ sub logdie {
 	die @_;
 }
 
-logm "Starting";
+logm "Starting (pid:$$)";
 
 # create the named pipe if it doesn't exist
 if (! -p $CONF{pipef}) {
