@@ -36,9 +36,12 @@ for (keys %$fconf) {
 # open the log file
 open LOG, ">>", $CONF{logf} || die "Couldn't open logfile $CONF{logf} for writing";
 LOG->autoflush();
+# make log file default place for output
+select LOG;
 
+# wraps the message in some handy logfile type business
 sub logm {
-	print LOG "[", (scalar localtime), "] ", @_, "\n";
+	print "[", (scalar localtime), "] ", @_, "\n";
 }
 
 sub logdie {
@@ -70,11 +73,11 @@ while(1) {
 	logm "Waiting for wakeup call";
 	open FH, "<", $CONF{pipef} || die "couldn't open";
 	close FH;
-	logm "Awake\n";
+	logm "Awake";
 	for (@{$CONF{repos}}) {
 		logdie "Error: $_ not a directory" unless -d $_;
-		logm "Updating: $_\n";
-		system "git --git-dir='$_' pull -q";
-		logm "done\n";
+		logm "Updating: $_";
+		my $retval = system "git --git-dir='$_' pull -q";
+		logm "\t", ($retval == 0) ? "SUCCESS" : "FAILURE ($retval)";
 	}
 }
