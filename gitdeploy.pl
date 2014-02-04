@@ -10,7 +10,7 @@ my $CONFIG_FILE = "/etc/gitdeploy.yml";
 
 # parse command-line options
 my %opts;
-getopts('df:', \%opts);
+getopts('dnkf:', \%opts);
 if ($opts{f}) {
 	$CONFIG_FILE = $opts{'f'};
 }
@@ -35,6 +35,36 @@ $fconf = $fconf->[0];
 for (keys %$fconf) {
 	$CONF{$_} = $fconf->{$_};
 }
+
+chdir($CONF{basedir});
+
+# make sure we aren't already running
+my $pid = 0;
+if (-f $CONF{pidf}) {
+	open PIDF, "<", $CONF{pidf} || die "PID file exists, but I can't read it";
+	$pid = <PIDF>;
+	close PIDF;
+	# send signal zero to see if it's alive
+	if (kill(0, $pid) == 0) {
+		# it's dead
+		$pid = 0;
+		say "Deleting stale PID file $CONF{pidf}";
+		unlink $CONF{pidf};
+	}
+}
+
+# were we asking to kill?
+if ($opts{k}) {
+	my $sig = 1; # HUP
+	die "Not running (-k option)" unless ($pid > 0);
+	kill $sig, $pid;
+	say "Sent signal $sig to $pid";
+	# all we wanted to do with this option, so exit
+	exit;
+}
+
+# are we already running? if so it's in an error
+die "Already running! (pid: $pid)" if ($pid > 0);
 
 # fork a daemon and exit
 my $child_pid = Proc::Daemon->new(
@@ -91,6 +121,7 @@ sub clean_exit {
 	my $sig = shift;
 	logm (($sig ? "received signal $sig; " : ""), "exiting");
 	close LOG;
+	unlink $CONF{pidf};
 	exit;
 }
 
