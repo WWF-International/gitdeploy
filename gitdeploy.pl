@@ -25,9 +25,28 @@ my %CONF = (
 	repos   => [] # empty set of repos by default
 );
 
+sub conf_valid {
+	my $conf = shift;
+	if (!defined $conf || !$conf->isa("YAML::Tiny")) {
+		warn "Reading YAML file did not produce a YAML::Tiny object " . ref $conf;
+		return 0;
+	}
+	if ($#{$conf} < 0) {
+		warn "YAML file did not contain any documents";
+		return 0;
+	}
+	if (ref($conf->[0]->{repos}) ne "ARRAY") {
+		warn "No repos or badly formatted repos [" . $conf->{repos} ."]";
+		return 0;
+	}
+	return 1;
+}
+
 # attempt to read config file
 (-f $CONFIG_FILE) || die "Config file $CONFIG_FILE doesn't exist";
 my $fconf = YAML::Tiny->read($CONFIG_FILE);
+die "Could not parse $CONFIG_FILE ($@)" unless conf_valid $fconf;
+
 # only read the first document
 $fconf = $fconf->[0];
 
