@@ -179,6 +179,6 @@ while(1) {
 		logdie "Error: $_ not a directory" unless -d $_;
 		logm "Updating: $_";
 		my $retval = system "git --git-dir='$_' pull -q";
-		logm "\t", ($retval == 0) ? "SUCCESS" : "FAILURE ($retval)";
+		logm "-> ", ($retval == 0) ? "SUCCESS" : "FAILURE ($retval)";
 	}
 }
