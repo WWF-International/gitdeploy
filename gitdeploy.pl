@@ -21,6 +21,7 @@ my %CONF = (
 	logf    => "/var/log/gitdeploy.log",
 	pidf    => "/var/run/gitdeploy.pid",
 	basedir => "/tmp",
+	user    => "gitdeploy",
 	repos   => [] # empty set of repos by default
 );
 
@@ -66,12 +67,17 @@ if ($opts{k}) {
 # are we already running? if so it's in an error
 die "Already running! (pid: $pid)" if ($pid > 0);
 
+# what user to run as?
+my @user = getpwnam($CONF{user});
+die "Could not find user $CONF{user}" unless ($#user >= 2);
+
 # fork a daemon and exit
 my $child_pid = Proc::Daemon->new(
 	work_dir     => $CONF{basedir},
 	pid_file     => $CONF{pidf},
 	child_STDOUT => ">>$CONF{logf}",
-	child_STDERR => ">>$CONF{logf}"
+	child_STDERR => ">>$CONF{logf}",
+	setuid       => $user[2]
 )->Init;
 
 if ($child_pid) {
