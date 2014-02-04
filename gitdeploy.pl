@@ -67,6 +67,18 @@ for (@{$CONF{repos}}) {
 	logdie "ERROR: repo $_ doesn't exist" unless -d $_;
 }
 
+# call this when we want to finish cleanly
+sub clean_exit {
+	my $sig = shift;
+	logm (($sig ? "received signal $sig; " : ""), "exiting");
+	close LOG;
+	exit;
+}
+
+# and set this up as the signal handler
+$SIG{INT} = \&clean_exit;
+$SIG{HUP} = \&clean_exit;
+
 if ($opts{d}) { logm "debug exit"; exit };
 # now enter main loop
 while(1) {
