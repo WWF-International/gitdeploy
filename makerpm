@@ -1,0 +1,11 @@
+#!/bin/bash
+# REQUIRES fpm ruby gem
+
+FPM=${FPM:=$HOME/bin/fpm}
+
+VERSION=${GITDEPLOY_VERSION:=0.0.1}
+
+perl INSTALL.pl
+
+${FPM} -s dir -t rpm -n gitdeploy -v ${VERSION} -C deploy -d perl-YAML-Tiny \
+	-a noarch .
