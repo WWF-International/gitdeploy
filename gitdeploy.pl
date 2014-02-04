@@ -35,9 +35,20 @@ sub conf_valid {
 		warn "YAML file did not contain any documents";
 		return 0;
 	}
-	if (ref($conf->[0]->{repos}) ne "ARRAY") {
-		warn "No repos or badly formatted repos [" . $conf->{repos} ."]";
+	if (!defined $conf->[0]->{repos} || ref($conf->[0]->{repos}) ne "ARRAY") {
+		warn "No repos or badly formatted repos";
 		return 0;
+	}
+	if (!-d $conf->[0]->{basedir}) {
+		warn "Base dir doesn't exist or isn't reachable";
+		return 0;
+	}
+	chdir($conf->[0]->{basedir});
+	for (@{$conf->[0]->{repos}}) {
+		if (! -d $_) {
+			warn "Repo $_ doesn't exist";
+			return 0;
+		}
 	}
 	return 1;
 }
