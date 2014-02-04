@@ -169,6 +169,30 @@ sub clean_exit {
 $SIG{INT} = \&clean_exit;
 $SIG{HUP} = \&clean_exit;
 
+# these functions deal with GIT; first arg is the git-dir
+sub git_cmd {
+	my ($repo, $cmd) = @_;
+	return `git --git-dir='$repo' $cmd`;
+}
+
+sub git_branch {
+	my $branch = "";
+	if ((scalar git_cmd($_[0], "branch")) =~ /^\s*\*\s*(.*)$/m) {
+		$branch = $1;
+	}
+	return $branch;
+}
+
+sub git_head {
+	chomp(my $head = git_cmd($_[0], 'show-ref --heads --head -s HEAD'));
+	return $head;
+}
+
+sub git_changed_files {
+	chomp(my @flist = `git --git-dir='$_' diff --name-only HEAD~1..HEAD`);
+	return @flist;
+}
+
 # now enter main loop
 while(1) {
 	logm "Waiting for wakeup call";
@@ -177,8 +201,16 @@ while(1) {
 	logm "Awake";
 	for (@{$CONF{repos}}) {
 		logdie "Error: $_ not a directory" unless -d $_;
-		logm "Updating: $_";
+		my $branch = git_branch($_);
+		my $start_head = git_head($_);
+		logm "Updating: $_ ($branch)";
 		my $retval = system "git --git-dir='$_' pull -q";
 		logm "-> ", ($retval == 0) ? "SUCCESS" : "FAILURE ($retval)";
+		if ($start_head ne git_head($_)) {
+			# head has changed .. show what changed
+			logm "Changed files: " . join(", ", git_changed_files($_));
+		} else {
+			logm "HEAD hasn't changed";
+		}
 	}
 }
