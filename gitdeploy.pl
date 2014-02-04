@@ -184,7 +184,8 @@ sub git_branch {
 }
 
 sub git_head {
-	chomp(my $head = git_cmd($_[0], 'show-ref --heads --head -s HEAD'));
+	chomp(my $head = git_cmd($_[0], 'log --pretty=%H -n1 HEAD'));
+	logm "HEAD: $head";
 	return $head;
 }
 
