@@ -5,6 +5,7 @@ use YAML::Tiny;
 use Getopt::Std;
 use IO::Handle;
 use Proc::Daemon;
+use Sys::Syslog;
 
 my $CONFIG_FILE = "/etc/gitdeploy.yml";
 
@@ -18,7 +19,6 @@ if ($opts{f}) {
 # initialise to the default config
 my %CONF = (
 	pipef   => "/tmp/gitdeploy_test",
-	logf    => "/var/log/gitdeploy.log",
 	pidf    => "/var/run/gitdeploy.pid",
 	basedir => "/tmp",
 	user    => "gitdeployadm",
@@ -71,40 +71,44 @@ die "Already running! (pid: $pid)" if ($pid > 0);
 my @user = getpwnam($CONF{user});
 die "Could not find user $CONF{user}" unless ($#user >= 2);
 
-# fork a daemon and exit
-my $child_pid = Proc::Daemon->new(
-	work_dir     => $CONF{basedir},
-	pid_file     => $CONF{pidf},
-	child_STDOUT => ">>$CONF{logf}",
-	child_STDERR => ">>$CONF{logf}",
-	setuid       => $user[2]
-)->Init;
+# if we are neither super user, nor the user that we want to run as, then we
+# have a problem...
+die "Cannot change user, need to be root for that" if ($< != $user[2] && $< != 0);
 
-if ($child_pid) {
-	# parent
-	say "Daemon $child_pid started";
-	# parent should exit now
-	exit;
+# -n means run in foreground
+unless ($opts{n}) {
+	# fork a daemon and exit
+	my $child_pid = Proc::Daemon->new(
+		work_dir      => $CONF{basedir},
+		pid_file      => $CONF{pidf},
+		setuid        => $user[2],
+	)->Init;
+
+	if ($child_pid) {
+		# parent
+		say "Daemon $child_pid started";
+		# parent should exit now
+		exit;
+	}
 }
-# this is the child / daemon process
+# this is the child / daemon process, or foreground
 
 # open the log file
-open LOG, ">>", $CONF{logf} || die "Couldn't open logfile $CONF{logf} for writing";
-LOG->autoflush();
-# make log file default place for output
-select LOG;
+openlog("gitdeploy", "pid", "daemon");
 
 # wraps the message in some handy logfile type business
 sub logm {
-	print "[", (scalar localtime), "] ", @_, "\n";
+	print @_,"\n" if ($opts{n});
+	syslog("info", "%s", join("", @_));
 }
 
 sub logdie {
-	logm @_;
+	syslog("err", "%s", join("", @_));
 	die @_;
 }
 
 logm "Starting (pid:$$)";
+logm "Monitoring " . ($#{$CONF{repos}} + 1) . " repos";
 
 # create the named pipe if it doesn't exist
 if (! -p $CONF{pipef}) {
@@ -126,7 +130,7 @@ for (@{$CONF{repos}}) {
 sub clean_exit {
 	my $sig = shift;
 	logm (($sig ? "received signal $sig; " : ""), "exiting");
-	close LOG;
+	closelog;
 	unlink $CONF{pidf};
 	exit;
 }
@@ -135,7 +139,6 @@ sub clean_exit {
 $SIG{INT} = \&clean_exit;
 $SIG{HUP} = \&clean_exit;
 
-if ($opts{d}) { logm "debug exit"; exit };
 # now enter main loop
 while(1) {
 	logm "Waiting for wakeup call";
