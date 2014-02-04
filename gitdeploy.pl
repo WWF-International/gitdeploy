@@ -21,7 +21,7 @@ my %CONF = (
 	logf    => "/var/log/gitdeploy.log",
 	pidf    => "/var/run/gitdeploy.pid",
 	basedir => "/tmp",
-	user    => "gitdeploy",
+	user    => "gitdeployadm",
 	repos   => [] # empty set of repos by default
 );
 
