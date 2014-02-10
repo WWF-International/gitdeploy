@@ -11,6 +11,9 @@ endif
 
 "" setus up the current file to be used with GitDeploy
 function! GitDeployInit()
+	" if it's alread in the list, delete it silently, to ensure that it will
+	" only appear once
+	silent! argdelete %
 	argadd %
 	nnoremap <buffer> <localleader>dd :call GitDeployPush()<cr>
 	nnoremap <buffer> <localleader>dm :call GitDeployPush(input("Commit message: "))<cr>
