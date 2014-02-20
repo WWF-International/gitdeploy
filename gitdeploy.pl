@@ -124,6 +124,8 @@ unless ($opts{n}) {
 	}
 }
 # this is the child / daemon process, or foreground
+$< = $> = $user[2]; # set user in case we haven't already done it
+die $! if $!;
 
 # open the log file
 openlog("gitdeploy", "pid", "daemon");
@@ -215,8 +217,13 @@ while(1) {
 		}
 		my $start_head = git_head($_);
 		logm "Updating: $_ ($branch)";
-		my $retval = system "git --git-dir='$_' checkout -q --detach remotes/$CONF{remote}/$branch";
-		logm "-> ", ($retval == 0) ? "SUCCESS" : "FAILURE ($retval)";
+		my $retval = eval {
+			my $output = `git --git-dir='$_' fetch $CONF{remote} $branch:remotes/$CONF{remote}/$branch 2>&1`;
+			die "error running fetch:\n$output" unless $? == 0;
+			$output = `git --git-dir='$_' checkout --detach remotes/$CONF{remote}/$branch 2>&1`;
+			die "error running checkout:\n$output" unless $? == 0;
+		};
+		logm "-> ", (defined $retval) ? "SUCCESS" : "FAILURE\n$@";
 		my $new_head = git_head($_);
 		if ($start_head ne $new_head) {
 			# head has changed .. show what changed
