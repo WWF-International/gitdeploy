@@ -7,6 +7,7 @@ use IO::Handle;
 use Proc::Daemon;
 use Sys::Syslog;
 
+my $BRANCH_TAG  = "gitdeploy/branch_name";
 my $CONFIG_FILE = "/etc/gitdeploy.yml";
 
 # parse command-line options
@@ -176,11 +177,13 @@ sub git_cmd {
 }
 
 sub git_branch {
-	my $branch = "";
-	if ((scalar git_cmd($_[0], "branch")) =~ /^\s*\*\s*(.*)$/m) {
-		$branch = $1;
+	my $valid = git_cmd $_[0], "tag -l $BRANCH_TAG";
+	if (!$valid) {
+		return undef;
+	} else {
+		chomp(my $branch = git_cmd($_[0], "cat-file blob $BRANCH_TAG"));
+		return $branch;
 	}
-	return $branch;
 }
 
 sub git_head {
@@ -203,6 +206,12 @@ while(1) {
 	for (@{$CONF{repos}}) {
 		logdie "Error: $_ not a directory" unless -d $_;
 		my $branch = git_branch($_);
+		if (!$branch) {
+			logm "WARNING: invalid branch for repo $_";
+			next;
+		}
+		print "branch is -> $branch\n";
+		next;
 		my $start_head = git_head($_);
 		logm "Updating: $_ ($branch)";
 		my $retval = system "git --git-dir='$_' pull -q";

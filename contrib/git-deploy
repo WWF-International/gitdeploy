@@ -22,7 +22,7 @@ sub git {
 
 sub ngit {
 	my $cmd = join(" ", "git", @_);
-	system "$cmd";
+	return system "$cmd";
 }
 
 sub set_branch {
@@ -47,7 +47,12 @@ sub set_branch {
 
 sub get_branch {
 	my ($opts) = @_;
-	print git("cat-file blob $TAG_NAME"), ($opts->{n} ? "" : "\n");
+	eval { git("tag -l $TAG_NAME") };
+	if ($@) {
+		print "<none>\n";
+	} else {
+		print git("cat-file blob $TAG_NAME"), ($opts->{n} ? "" : "\n");
+	}
 }
 
 sub help {
