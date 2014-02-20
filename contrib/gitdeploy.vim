@@ -6,7 +6,7 @@
 "" push the current version of the file. Will use the commit message if it is provided
 
 if !exists('g:gitdeploy_default_msg')
-  let g:gitdeploy_default_msg = "."
+  let g:gitdeploy_default_msg = ""
 endif
 
 "" setus up the current file to be used with GitDeploy
@@ -26,6 +26,6 @@ function! GitDeployPush(...)
 	endif
 	" now 'git-add' all of the files on the arg list
 	argdo Gwrite
-	execute "Gcommit -m '" . msg . "'"
+	execute "Gcommit --allow-empty-message -m '" . msg . "'"
 	Git push
 endfunction
