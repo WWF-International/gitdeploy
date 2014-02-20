@@ -1,0 +1,84 @@
+#!/usr/bin/perl
+
+use strict;
+use File::Temp;
+use Getopt::Std;
+use Dumpvalue;
+
+our $USAGE = <<EOF;
+Use one of the following commands with `git deploy <cmd>`:
+	set_branch <arg> : will set the branch that should be deployed.
+
+	set_branch [-n]  : will print the current branch configuration. If '-n' is
+							 provided, a newline won't be appended.
+EOF
+
+our $TAG_NAME = $ENV{GIT_DEPLOY_TAG_NAME} || "gitdeploy/branch_name";
+
+sub git {
+	my $cmd = join(" ", "git", @_);
+	return (`$cmd` || die "Error executing git")
+}
+
+sub ngit {
+	my $cmd = join(" ", "git", @_);
+	system "$cmd";
+}
+
+sub set_branch {
+	my ($opts, $bname) = @_;
+	my $remote = $opts->{r} || "origin";
+	die "No branch name provided" unless $bname;
+	my $temp = File::Temp->new(UNLINK => 1);
+	print $temp $bname;
+	my @cmd = qw(hash-object -w);
+	push @cmd, $temp->filename;
+	chomp(my $HASH = git @cmd);
+	@cmd = qw(tag -a -f);
+	push @cmd, $TAG_NAME, $HASH;
+	ngit @cmd;
+	unless ($opts->{n}) {
+		print "pushing to $remote\n";
+		@cmd = qw(push -f --tags);
+		push @cmd, $remote, $TAG_NAME;
+		ngit @cmd;
+	};
+}
+
+sub get_branch {
+	my ($opts) = @_;
+	print git("cat-file blob $TAG_NAME"), ($opts->{n} ? "" : "\n");
+}
+
+sub help {
+	our $USAGE;
+
+	print $USAGE;
+}
+
+my %CMDS = (
+	set_branch => {
+		func => \&set_branch,
+		opts => "nr:",
+	},
+	get_branch => {
+		func => \&get_branch,
+		opts => "n",
+	},
+	help       => {
+		func => \&help,
+	},
+);
+
+my $cmd = shift @ARGV;
+my %opts;
+
+if (defined (my $c = $CMDS{$cmd})) {
+	if ($c->{opts}) {
+		getopts($c->{opts}, \%opts);
+	}
+	$c->{func}->(\%opts, @ARGV);
+} else {
+	warn "Unknown command $cmd";
+	help;
+}
