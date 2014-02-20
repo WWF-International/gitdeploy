@@ -23,7 +23,8 @@ my %CONF = (
 	pidf    => "/var/run/gitdeploy.pid",
 	basedir => "/tmp",
 	user    => "gitdeployadm",
-	repos   => [] # empty set of repos by default
+	repos   => [], # empty set of repos by default
+	remote  => "origin",
 );
 
 sub conf_valid {
@@ -193,7 +194,8 @@ sub git_head {
 }
 
 sub git_changed_files {
-	chomp(my @flist = `git --git-dir='$_' diff --name-only HEAD~1..HEAD`);
+	my ($gitdir, $old, $new) = @_;
+	chomp(my @flist = `git --git-dir='$gitdir' diff --name-only $old..$new`);
 	return @flist;
 }
 
@@ -205,20 +207,20 @@ while(1) {
 	logm "Awake";
 	for (@{$CONF{repos}}) {
 		logdie "Error: $_ not a directory" unless -d $_;
+		system "git --git-dir='$_' fetch --tags";
 		my $branch = git_branch($_);
 		if (!$branch) {
 			logm "WARNING: invalid branch for repo $_";
 			next;
 		}
-		print "branch is -> $branch\n";
-		next;
 		my $start_head = git_head($_);
 		logm "Updating: $_ ($branch)";
-		my $retval = system "git --git-dir='$_' pull -q";
+		my $retval = system "git --git-dir='$_' checkout -q --detach remotes/$CONF{remote}/$branch";
 		logm "-> ", ($retval == 0) ? "SUCCESS" : "FAILURE ($retval)";
-		if ($start_head ne git_head($_)) {
+		my $new_head = git_head($_);
+		if ($start_head ne $new_head) {
 			# head has changed .. show what changed
-			logm "Changed files: " . join(", ", git_changed_files($_));
+			logm "Changed files: " . join(", ", git_changed_files($_, $start_head, $new_head));
 		} else {
 			logm "HEAD hasn't changed";
 		}
