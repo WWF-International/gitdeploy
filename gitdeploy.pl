@@ -123,10 +123,6 @@ unless ($opts{n}) {
 		exit;
 	}
 }
-# this is the child / daemon process, or foreground
-$< = $> = $user[2]; # set user in case we haven't already done it
-die $! if $!;
-
 # open the log file
 openlog("gitdeploy", "pid", "daemon");
 
@@ -140,6 +136,11 @@ sub logdie {
 	syslog("err", "%s", join("", @_));
 	die @_;
 }
+
+# this is the child / daemon process, or foreground
+
+# set user in case we haven't already done it
+POSIX::setuid($user[2]) or logm "could not set user: $!";
 
 logm "Starting (pid:$$)";
 logm "Monitoring " . ($#{$CONF{repos}} + 1) . " repos";
