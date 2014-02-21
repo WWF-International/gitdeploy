@@ -7,10 +7,14 @@ use Dumpvalue;
 
 our $USAGE = <<EOF;
 Use one of the following commands with `git deploy <cmd>`:
-	set_branch <arg> : will set the branch that should be deployed.
+   set_branch [-n] [-r <remote>] <arg>
+      will set the branch that should be deployed.
+      -n will skip pushing to the remote server
+      -r will change the remote from the default (origin)
 
-	set_branch [-n]  : will print the current branch configuration. If '-n' is
-							 provided, a newline won't be appended.
+   get_branch [-n]
+      will print the current branch configuration. If '-n' is
+      provided, a newline won't be appended.
 EOF
 
 our $TAG_NAME = $ENV{GIT_DEPLOY_TAG_NAME} || "gitdeploy/branch_name";
